@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import {DisciplineDto} from '../../types/interfaces/discipline.dto.i';
 import {StudentDto} from '../../types/interfaces/student.dto.i';
 import {StatementDto} from '../../types/interfaces/statement.dto';
 

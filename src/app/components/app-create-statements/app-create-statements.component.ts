@@ -4,6 +4,7 @@ import {NgForOf, NgIf} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {StudentDto} from '../../types/interfaces/student.dto.i';
 import {StatementDto} from '../../types/interfaces/statement.dto';
+import {DisciplineDto} from '../../types/interfaces/discipline.dto.i';
 
 @Component({
   selector: 'app-app-create-statements',
@@ -14,7 +15,14 @@ import {StatementDto} from '../../types/interfaces/statement.dto';
 })
 
 export class AppCreateStatementsComponent implements OnInit {
-  disciplineInfo: DisciplineDto = new DisciplineDto();
+  disciplineInfo: DisciplineDto = {
+    subjectId: 0,
+    subjectTitle: '',
+    professorId: 0,
+    professorName: '',
+    groupId: 0,
+    groupName: ''
+  };
   students: StudentListInfo[] = [];
   selectedDate: string = '';
   loading: boolean = true;
