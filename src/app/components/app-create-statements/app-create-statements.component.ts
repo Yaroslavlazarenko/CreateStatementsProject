@@ -34,7 +34,7 @@ export class AppCreateStatementsComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       selectedDate: ['', Validators.required],
-      students: this.fb.array([]),
+      students: this.fb.array([], Validators.required),
     });
   }
 
@@ -49,9 +49,7 @@ export class AppCreateStatementsComponent implements OnInit {
         this.disciplineInfo = data;
         this.loadStudents();
       },
-      error: () => {
-        this.setError('Error loading discipline data');
-      }
+      error: () => this.setError('Error loading discipline data')
     });
   }
 
@@ -61,15 +59,10 @@ export class AppCreateStatementsComponent implements OnInit {
     this.statementsService.getStudentsData(this.disciplineInfo.subjectId, this.disciplineInfo.professorId).subscribe({
       next: (students: StudentDto[]) => {
         this.studentsFormArray.clear();
-        students.forEach(student => {
-          const studentFormGroup = this.createStudentFormGroup(student);
-          this.studentsFormArray.push(studentFormGroup);
-        });
+        students.forEach(student => this.studentsFormArray.push(this.createStudentFormGroup(student)));
         this.loading = false;
       },
-      error: () => {
-        this.setError('Error loading students');
-      }
+      error: () => this.setError('Error loading students')
     });
   }
 
@@ -84,9 +77,7 @@ export class AppCreateStatementsComponent implements OnInit {
   private nullOrGradeValidator(): Validators {
     return (control: AbstractControl): { [key: string]: any } | null => {
       const value = control.value;
-      if (value === null) {
-        return null;
-      }
+      if (value === null) return null;
       return value >= 0 && value <= 100 ? null : { invalidGrade: true };
     };
   }
@@ -96,9 +87,7 @@ export class AppCreateStatementsComponent implements OnInit {
   }
 
   isFormInvalid(): boolean {
-    return this.form.get('selectedDate')?.invalid || this.studentsFormArray.controls.some(control =>
-      control.get('grade')?.invalid
-    );
+    return this.form.invalid || this.studentsFormArray.controls.some(control => control.get('grade')?.invalid);
   }
 
   saveGrades(): void {
@@ -117,7 +106,7 @@ export class AppCreateStatementsComponent implements OnInit {
         value: control.get('grade')?.value,
       }));
 
-    if (grades.length === 0) {
+    if (!grades.length) {
       alert('Please enter grades for at least one student.');
       return;
     }
@@ -131,30 +120,21 @@ export class AppCreateStatementsComponent implements OnInit {
   handleGradeInput(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
     let value = input.value.replace(/[^0-9]/g, '');
-
     const gradeControl = this.studentsFormArray.at(index).get('grade') as FormControl;
 
-    if (value === '') {
-      gradeControl.setValue(null);
-    } else {
-      const grade = Math.max(0, Math.min(100, Number(value)));
-      gradeControl.setValue(grade);
-    }
-
+    gradeControl.setValue(value ? Math.max(0, Math.min(100, Number(value))) : null);
     gradeControl.markAsTouched();
     gradeControl.updateValueAndValidity();
 
     input.value = gradeControl.value !== null ? String(gradeControl.value) : '';
   }
 
-
-
-
   private setError(message: string): void {
     this.errorMessage = message;
     this.loading = false;
   }
 }
+
 
 
 
