@@ -1,35 +1,42 @@
-import {Component, OnInit} from '@angular/core';
-import {StatementsService} from '../../services/statements-service/statements.service';
-import {NgForOf, NgIf} from '@angular/common';
-import {FormsModule} from '@angular/forms';
-import {StudentDto} from '../../types/interfaces/student.dto.i';
-import {StatementDto} from '../../types/interfaces/statement.dto';
-import {DisciplineDto} from '../../types/interfaces/discipline.dto.i';
+import { Component, OnInit } from '@angular/core';
+import {
+  FormBuilder,
+  FormGroup,
+  FormArray,
+  Validators,
+  ReactiveFormsModule,
+  AbstractControl,
+  FormControl
+} from '@angular/forms';
+import { StatementsService } from '../../services/statements-service/statements.service';
+import { StudentDto } from '../../types/interfaces/student.dto.i';
+import { StatementDto } from '../../types/interfaces/statement.dto';
+import { DisciplineDto } from '../../types/interfaces/discipline.dto.i';
+import { NgIf, NgForOf } from '@angular/common';
 
 @Component({
   selector: 'app-app-create-statements',
   templateUrl: './app-create-statements.component.html',
   styleUrls: ['./app-create-statements.component.css'],
   standalone: true,
-  imports: [FormsModule, NgIf, NgForOf],
+  imports: [NgIf, NgForOf, ReactiveFormsModule]
 })
-
 export class AppCreateStatementsComponent implements OnInit {
-  disciplineInfo: DisciplineDto = {
-    subjectId: 0,
-    subjectTitle: '',
-    professorId: 0,
-    professorName: '',
-    groupId: 0,
-    groupName: ''
-  };
-  students: StudentListInfo[] = [];
-  selectedDate: string = '';
-  loading: boolean = true;
-  errorMessage: string = '';
-  dateTouched: boolean = false;
+  form: FormGroup;
+  disciplineInfo: DisciplineDto | null = null;
+  loading = true;
+  errorMessage = '';
+  dateTouched = false;
 
-  constructor(private statementsService: StatementsService) {}
+  constructor(
+    private fb: FormBuilder,
+    private statementsService: StatementsService
+  ) {
+    this.form = this.fb.group({
+      selectedDate: ['', Validators.required],
+      students: this.fb.array([]),
+    });
+  }
 
   ngOnInit(): void {
     this.loadData();
@@ -38,7 +45,7 @@ export class AppCreateStatementsComponent implements OnInit {
   private loadData(): void {
     this.loading = true;
     this.statementsService.getDisciplineData(1).subscribe({
-      next: (data) => {
+      next: (data: DisciplineDto) => {
         this.disciplineInfo = data;
         this.loadStudents();
       },
@@ -49,14 +56,15 @@ export class AppCreateStatementsComponent implements OnInit {
   }
 
   private loadStudents(): void {
+    if (!this.disciplineInfo) return;
+
     this.statementsService.getStudentsData(this.disciplineInfo.subjectId, this.disciplineInfo.professorId).subscribe({
-      next: (studentsData: StudentDto[]) => {
-        this.students = studentsData.map((student: StudentDto) => ({
-          name: student.name,
-          studentId: student.studentId,
-          grade: null,
-          gradeIsValid: true
-        }));
+      next: (students: StudentDto[]) => {
+        this.studentsFormArray.clear();
+        students.forEach(student => {
+          const studentFormGroup = this.createStudentFormGroup(student);
+          this.studentsFormArray.push(studentFormGroup);
+        });
         this.loading = false;
       },
       error: () => {
@@ -65,60 +73,88 @@ export class AppCreateStatementsComponent implements OnInit {
     });
   }
 
+  private createStudentFormGroup(student: StudentDto): FormGroup {
+    return this.fb.group({
+      studentId: [student.studentId],
+      name: [student.name],
+      grade: [null, [Validators.min(0), Validators.max(100), this.nullOrGradeValidator()]],
+    });
+  }
+
+  private nullOrGradeValidator(): Validators {
+    return (control: AbstractControl): { [key: string]: any } | null => {
+      const value = control.value;
+      if (value === null) {
+        return null;
+      }
+      return value >= 0 && value <= 100 ? null : { invalidGrade: true };
+    };
+  }
+
+  get studentsFormArray(): FormArray {
+    return this.form.get('students') as FormArray;
+  }
+
+  isFormInvalid(): boolean {
+    return this.form.get('selectedDate')?.invalid || this.studentsFormArray.controls.some(control =>
+      control.get('grade')?.invalid
+    );
+  }
+
+  saveGrades(): void {
+    if (this.isFormInvalid()) {
+      this.setError('Please fix form errors before saving.');
+      return;
+    }
+
+    const grades: StatementDto[] = this.studentsFormArray.controls
+      .filter(control => control.get('grade')?.value !== null)
+      .map(control => ({
+        studentId: control.get('studentId')?.value,
+        professorId: this.disciplineInfo!.professorId,
+        subjectId: this.disciplineInfo!.subjectId,
+        date: this.form.get('selectedDate')?.value,
+        value: control.get('grade')?.value,
+      }));
+
+    if (grades.length === 0) {
+      alert('Please enter grades for at least one student.');
+      return;
+    }
+
+    this.statementsService.saveGrades(grades).subscribe({
+      next: () => alert('Data saved successfully'),
+      error: () => alert('Error saving data'),
+    });
+  }
+
+  handleGradeInput(event: Event, index: number): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/[^0-9]/g, '');
+
+    const gradeControl = this.studentsFormArray.at(index).get('grade') as FormControl;
+
+    if (value === '') {
+      gradeControl.setValue(null);
+    } else {
+      const grade = Math.max(0, Math.min(100, Number(value)));
+      gradeControl.setValue(grade);
+    }
+
+    gradeControl.markAsTouched();
+    gradeControl.updateValueAndValidity();
+
+    input.value = gradeControl.value !== null ? String(gradeControl.value) : '';
+  }
+
+
+
+
   private setError(message: string): void {
     this.errorMessage = message;
     this.loading = false;
   }
-
-  validateGrade(student: StudentListInfo): void {
-    student.gradeIsValid = student.grade === null || (student.grade >= 0 && student.grade <= 100);
-  }
-
-  isFormInvalid(): boolean {
-    return !this.selectedDate || this.students.some(student => !student.gradeIsValid);
-  }
-
-  saveGrades(): void {
-    if (!this.selectedDate) {
-      this.setError('Please select a date before saving.');
-      return;
-    }
-
-    const grades: StatementDto[] = this.students
-      .filter(student => student.grade !== null && student.gradeIsValid)
-      .map(student => ({
-        studentId: student.studentId,
-        professorId: this.disciplineInfo.professorId,
-        subjectId: this.disciplineInfo.subjectId,
-        date: this.selectedDate,
-        value: student.grade as number
-      }));
-
-    if (grades.length > 0) {
-      this.statementsService.saveGrades(grades).subscribe({
-        next: () => alert('Data saved successfully'),
-        error: () => alert('Error saving data')
-      });
-    } else {
-      alert('Please enter grades for at least one student');
-    }
-  }
-
-  handleGradeInput(event: Event, student: StudentListInfo): void {
-    const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/[^0-9]/g, '');
-
-    if (value === '') {
-      student.grade = null;
-    } else {
-      student.grade = Math.max(0, Math.min(100, Number(value)));
-    }
-
-    this.validateGrade(student);
-    input.value = student.grade !== null ? student.grade.toString() : '';
-  }
 }
-
 
 
 

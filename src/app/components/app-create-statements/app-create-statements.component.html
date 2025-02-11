@@ -4,48 +4,50 @@
 
 <div *ngIf="!loading && !errorMessage">
   <div class="discipline-info">
-    <p><strong>Discipline:</strong> {{ disciplineInfo.subjectTitle }}</p>
-    <p><strong>Professor:</strong> {{ disciplineInfo.professorName }}</p>
-    <p><strong>Group:</strong> {{ disciplineInfo.groupName }}</p>
+    <form [formGroup]="form">
+      <label for="date">Select Date</label>
+      <input
+        id="date"
+        type="date"
+        formControlName="selectedDate"
+        (change)="dateTouched = true"
+        required
+      />
+      <div *ngIf="form.get('selectedDate')?.invalid && dateTouched" class="error">
+        Date is required
+      </div>
 
-    <label for="date">Select Date</label>
-    <input
-      id="date"
-      type="date"
-      [(ngModel)]="selectedDate"
-      (change)="dateTouched = true"
-      required
-    />
-    <div *ngIf="!selectedDate && dateTouched" class="error">Date is required</div>
+      <table>
+        <thead>
+        <tr>
+          <th>Student</th>
+          <th>Grade (0-100)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let studentControl of studentsFormArray.controls; let i = index">
+          <td>{{ studentControl.get('name')?.value }}</td>
+          <td>
+            <input
+              type="number"
+              (input)="handleGradeInput($event, i)"
+              min="0"
+              max="100"
+            />
+            <div
+              *ngIf="studentControl.get('grade')?.invalid && (studentControl.get('grade')?.touched || dateTouched)"
+              class="error"
+            >
+              Grade must be between 0 and 100 or null.
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <button (click)="saveGrades()" [disabled]="isFormInvalid()">Save</button>
+    </form>
   </div>
-
-  <table>
-    <thead>
-    <tr>
-      <th>Student</th>
-      <th>Grade (0-100)</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr *ngFor="let student of students">
-      <td>{{ student.name }}</td>
-      <td>
-        <input
-          type="number"
-          [(ngModel)]="student.grade"
-          (input)="handleGradeInput($event, student)"
-          min="0"
-          max="100"
-        />
-        <div *ngIf="!student.gradeIsValid" class="error">
-          Grade must be between 0 and 100 or left empty
-        </div>
-      </td>
-    </tr>
-    </tbody>
-  </table>
-
-  <button (click)="saveGrades()" [disabled]="isFormInvalid()">Save</button>
 </div>
 
 <div *ngIf="errorMessage" class="error">
