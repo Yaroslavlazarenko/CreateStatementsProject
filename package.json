@@ -3,13 +3,14 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --open --port 4210",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
   "private": true,
   "dependencies": {
+    "-": "^0.0.1",
     "@angular/animations": "^19.1.0",
     "@angular/common": "^19.1.0",
     "@angular/compiler": "^19.1.0",
@@ -18,6 +19,8 @@
     "@angular/platform-browser": "^19.1.0",
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -33,6 +36,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "tailwindcss": "^4.0.4",
     "typescript": "~5.7.2"
   }
 }
